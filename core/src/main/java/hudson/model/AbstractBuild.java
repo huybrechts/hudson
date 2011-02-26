@@ -868,7 +868,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     private ChangeLogSet<? extends Entry> calcChangeSet() {
         File changelogFile = new File(getRootDir(), "changelog.xml");
-        if (!changelogFile.exists())
+        if (!changelogFile.exists() || changelogFile.length() == 0)
             return ChangeLogSet.createEmpty(this);
 
         try {
