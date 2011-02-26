@@ -23,6 +23,8 @@
  */
 package hudson.tasks.test;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedMap;
 import hudson.Functions;
 import hudson.model.*;
 import hudson.util.*;
@@ -65,7 +67,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 public abstract class AbstractTestResultAction<T extends AbstractTestResultAction> implements HealthReportingAction, RunAction2 {
     public transient AbstractBuild<?,?> owner;
 
-    private Map<String,String> descriptions = new ConcurrentHashMap<String, String>();
+    private Map<String,String> descriptions = ImmutableSortedMap.of();
 
     /** @since 1.545 */
     protected AbstractTestResultAction() {}
@@ -366,13 +368,15 @@ public abstract class AbstractTestResultAction<T extends AbstractTestResultActio
     }
 
     protected void setDescription(TestObject object, String description) {
-    	descriptions.put(object.getId(), description);
+        descriptions = ImmutableSortedMap.<String,String>builder().putAll(descriptions).put(object.getId(), description).build();
     }
 
     public Object readResolve() {
     	if (descriptions == null) {
-    		descriptions = new ConcurrentHashMap<String, String>();
-    	}
+    		descriptions = ImmutableSortedMap.of();
+    	} else {
+            descriptions = ImmutableSortedMap.copyOf(descriptions);
+        }
     	
     	return this;
     }
