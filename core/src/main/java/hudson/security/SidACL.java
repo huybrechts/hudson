@@ -28,6 +28,7 @@ import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.acls.sid.PrincipalSid;
 import org.acegisecurity.acls.sid.GrantedAuthoritySid;
 import org.acegisecurity.acls.sid.Sid;
+import org.acegisecurity.userdetails.UserDetails;
 
 import java.util.logging.Logger;
 import static java.util.logging.Level.FINE;
@@ -65,8 +66,20 @@ public abstract class SidACL extends ACL {
      *      Otherwise null, indicating that this ACL doesn't have any entry for it.
      */
     protected Boolean _hasPermission(Authentication a, Permission permission) {
+            Sid s;
+
+        if (a.getPrincipal() instanceof UserDetails) {
+            // new PrincipalSid(Authentication) is inefficient: it does a toString()
+            // on Authentication, and then overrides that with username if principal instanceof UserDetails
+            // since this happens quite often, it produces a lot of garbage that stresses the GC.
+            // I'm fixing this here to avoid patching acegi
+            s = new PrincipalSid(((UserDetails) a.getPrincipal()).getUsername());
+        } else {
+            s = new PrincipalSid(a);
+        }
+
         // ACL entries for this principal takes precedence
-        Boolean b = hasPermission(new PrincipalSid(a),permission);
+        Boolean b = hasPermission(s,permission);
         if(LOGGER.isLoggable(FINER))
             LOGGER.finer("hasPermission(PrincipalSID:"+a.getPrincipal()+","+permission+")=>"+b);
         if(b!=null)
