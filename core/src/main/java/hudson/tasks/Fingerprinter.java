@@ -24,12 +24,8 @@
 package hudson.tasks;
 
 import com.google.common.collect.ImmutableMap;
-import hudson.EnvVars;
-import hudson.Extension;
-import hudson.FilePath;
+import hudson.*;
 import hudson.FilePath.FileCallable;
-import hudson.Launcher;
-import hudson.Util;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
@@ -61,6 +57,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,6 +67,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.RunAction2;
@@ -304,13 +302,32 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
          * From file name to the digest.
          */
         private /*almost final*/ PackedMap<String,String> record;
-
+        
         private transient WeakReference<Map<String,Fingerprint>> ref;
 
         public FingerprintAction(AbstractBuild build, Map<String, String> record) {
             this.build = build;
-            this.record = PackedMap.of(record);
-            compact();
+
+            if (record.size() > 50) {
+                write(record);
+            } else {
+                this.record = PackedMap.of(record);
+            }
+
+            onLoad(build);   // make compact
+        }
+        
+        private void write(Map<String,String> record) {
+            File fingerprintsFile = getFile();
+            try {
+                new XmlFile(fingerprintsFile).write(record);
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "could not save fingerprints to " + fingerprintsFile, e);
+            }
+        }
+
+        private File getFile() {
+            return new File(build.getRootDir(), "fingerprints.xml");
         }
 
         public void add(Map<String,String> moreRecords) {
@@ -341,7 +358,17 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
          * Obtains the raw data.
          */
         public Map<String,String> getRecords() {
-            return record;
+            if (record == null) {
+                return record;
+            }
+
+            try {
+                //TODO cache in a WeakReference
+                return Collections.unmodifiableMap((Map<String, String>) new XmlFile(getFile()).read());
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "could not load fingerprints from " + getFile(), e);
+                return Collections.emptyMap();
+            }
         }
 
         @Override public void onLoad(Run<?,?> r) {
@@ -403,7 +430,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
             Jenkins h = Jenkins.getInstance();
 
             Map<String,Fingerprint> m = new TreeMap<String,Fingerprint>();
-            for (Entry<String, String> r : record.entrySet()) {
+            for (Entry<String, String> r : getRecords().entrySet()) {
                 try {
                     Fingerprint fp = h._getFingerprint(r.getValue());
                     if(fp!=null)
