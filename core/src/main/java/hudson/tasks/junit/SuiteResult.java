@@ -23,7 +23,10 @@
  */
 package hudson.tasks.junit;
 
+import com.thoughtworks.xstream.annotations.XStreamConverter;
 import hudson.tasks.test.TestObject;
+import hudson.util.HeapSpaceStringConverter;
+import hudson.util.IOException2;
 import hudson.util.io.ParserConfigurator;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -61,13 +64,19 @@ import java.util.regex.Pattern;
 public final class SuiteResult implements Serializable {
     private final String file;
     private final String name;
+
+    @XStreamConverter(HeapSpaceStringConverter.class)
     private final String stdout;
+
+    @XStreamConverter(HeapSpaceStringConverter.class)
     private final String stderr;
+
     private float duration;
     /**
      * The 'timestamp' attribute of  the test suite.
      * AFAICT, this is not a required attribute in XML, so the value may be null.
      */
+    @XStreamConverter(HeapSpaceStringConverter.class)
     private String timestamp;
     /** Optional ID attribute of a test suite. E.g., Eclipse plug-ins tests always have the name 'tests' but a different id. **/
     private String id;

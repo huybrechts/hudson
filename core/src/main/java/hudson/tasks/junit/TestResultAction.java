@@ -214,7 +214,8 @@ public class TestResultAction extends AbstractTestResultAction<TestResultAction>
         XSTREAM.alias("result",TestResult.class);
         XSTREAM.alias("suite",SuiteResult.class);
         XSTREAM.alias("case",CaseResult.class);
-        XSTREAM.registerConverter(new HeapSpaceStringConverter(),100);
+        XSTREAM.processAnnotations(SuiteResult.class);
+        XSTREAM.processAnnotations(CaseResult.class);
     }
 
 }

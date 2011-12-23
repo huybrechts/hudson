@@ -25,6 +25,8 @@ package hudson.tasks.junit;
 
 import hudson.util.TextFile;
 import org.apache.commons.io.FileUtils;
+import com.thoughtworks.xstream.annotations.XStreamConverter;
+import hudson.util.HeapSpaceStringConverter;
 import org.jvnet.localizer.Localizable;
 
 import hudson.model.AbstractBuild;
@@ -68,8 +70,13 @@ public class CaseResult extends TestResult implements Comparable<CaseResult> {
     private transient String safeName;
     private final boolean skipped;
     private final String skippedMessage;
+
+    @XStreamConverter(HeapSpaceStringConverter.class)
     private final String errorStackTrace;
+
+    @XStreamConverter(HeapSpaceStringConverter.class)
     private final String errorDetails;
+
     private transient SuiteResult parent;
 
     private transient ClassResult classResult;
@@ -81,7 +88,11 @@ public class CaseResult extends TestResult implements Comparable<CaseResult> {
      * If these information are reported at the test case level, these fields are set,
      * otherwise null, in which case {@link SuiteResult#stdout}.
      */
-    private final String stdout,stderr;
+    @XStreamConverter(HeapSpaceStringConverter.class)
+    private final String stdout;
+
+    @XStreamConverter(HeapSpaceStringConverter.class)
+    private final String stderr;
 
     /**
      * This test has been failing since this build number (not id.)
