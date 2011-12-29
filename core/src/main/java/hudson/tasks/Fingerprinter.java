@@ -55,6 +55,7 @@ import org.kohsuke.stapler.StaplerRequest;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -304,12 +305,14 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
         private /*almost final*/ PackedMap<String,String> record;
         
         private transient WeakReference<Map<String,Fingerprint>> ref;
+		private transient SoftReference<PackedMap<String,String>> recordRef;
 
         public FingerprintAction(AbstractBuild build, Map<String, String> record) {
             this.build = build;
 
             if (record.size() > 50) {
                 write(record);
+				recordRef = new SoftReference<PackedMap<String, String>>(PackedMap.of(record));
             } else {
                 this.record = PackedMap.of(record);
             }
@@ -358,13 +361,15 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
          * Obtains the raw data.
          */
         public Map<String,String> getRecords() {
-            if (record == null) {
+            if (record != null) {
                 return record;
             }
+			if (recordRef != null && recordRef.get() != null) return recordRef.get();
 
             try {
-                //TODO cache in a WeakReference
-                return Collections.unmodifiableMap((Map<String, String>) new XmlFile(getFile()).read());
+				final PackedMap<String, String> result = PackedMap.of((Map<String, String>) new XmlFile(getFile()).read());
+				recordRef = new SoftReference<PackedMap<String, String>>(result);
+				return result;
             } catch (IOException e) {
                 logger.log(Level.WARNING, "could not load fingerprints from " + getFile(), e);
                 return Collections.emptyMap();
