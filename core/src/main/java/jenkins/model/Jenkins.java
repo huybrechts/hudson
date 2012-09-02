@@ -1847,6 +1847,9 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             .add(new CollectionSearchIndex() {// for views
                 protected View get(String key) { return getView(key); }
                 protected Collection<View> all() { return views; }
+            }).add(new CollectionSearchIndex() {
+                protected Label get(String key) { return labels.get(key); }
+                protected Collection<Label> all() { return getLabels(); }
             });
     }
 
