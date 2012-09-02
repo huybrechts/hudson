@@ -55,6 +55,7 @@ import hudson.tasks.Fingerprinter.FingerprintAction;
 import hudson.tasks.Publisher;
 import hudson.tasks.test.AbstractTestResultAction;
 import hudson.tasks.test.AggregatedTestResultAction;
+import hudson.tasks.test.AggregatedTestResultPublisher;
 import hudson.util.*;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.HttpResponse;
@@ -1012,7 +1013,13 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      * Gets {@link AbstractTestResultAction} associated with this build if any.
      */
     public AbstractTestResultAction getTestResultAction() {
-        return getAction(AbstractTestResultAction.class);
+        for (Action a: getActions()) {
+            if (AbstractTestResultAction.class.isInstance(a) && !AggregatedTestResultPublisher.TestResultAction.class.isInstance(a)) {
+                return (AbstractTestResultAction) a;
+            }
+
+        }
+        return null;
     }
 
     /**
