@@ -2954,7 +2954,13 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         Map<String,Map<String,String>> r = new HashMap<String, Map<String, String>>();
         for (Entry<String, Future<Map<String, String>>> e : future.entrySet()) {
             try {
-                r.put(e.getKey(), e.getValue().get(endTime-System.currentTimeMillis(), TimeUnit.MILLISECONDS));
+                Map<String, String> threadDump;
+                if ("master".equals(e.getKey())) {
+                    threadDump = e.getValue().get();
+                } else {
+                    threadDump = e.getValue().get(endTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+                }
+                r.put(e.getKey(), threadDump);
             } catch (Exception x) {
                 StringWriter sw = new StringWriter();
                 x.printStackTrace(new PrintWriter(sw,true));
