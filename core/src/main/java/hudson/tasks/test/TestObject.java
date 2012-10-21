@@ -33,6 +33,7 @@ import hudson.tasks.junit.TestResultAction;
 import jenkins.model.Jenkins;
 
 import org.kohsuke.stapler.*;
+import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import com.google.common.collect.MapMaker;
@@ -214,6 +215,7 @@ public abstract class TestObject extends hudson.tasks.junit.TestObject {
      * Get a list of all TestActions associated with this TestObject. 
      */
     @Override
+    @Exported
     public List<TestAction> getTestActions() {
         AbstractTestResultAction atra = getTestResultAction();
         if ((atra != null) && (atra instanceof TestResultAction)) {
