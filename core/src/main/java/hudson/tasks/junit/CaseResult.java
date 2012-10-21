@@ -225,9 +225,10 @@ public class CaseResult extends TestResult implements Comparable<CaseResult> {
 
     private static String getError(Element testCase) {
         String msg = testCase.elementText("error");
-        if(msg!=null)
-            return msg;
-        return testCase.elementText("failure");
+        if(msg != null) return msg;
+        msg = testCase.elementText("failure");
+        if (msg != null) return msg;
+        return testCase.elementText("skipped");
     }
 
     private static String getErrorMessage(Element testCase) {
@@ -235,6 +236,9 @@ public class CaseResult extends TestResult implements Comparable<CaseResult> {
         Element msg = testCase.element("error");
         if (msg == null) {
             msg = testCase.element("failure");
+        }
+        if (msg == null) {
+            msg = testCase.element("skipped");
         }
         if (msg == null) {
             return null; // no error or failure elements! damn!
