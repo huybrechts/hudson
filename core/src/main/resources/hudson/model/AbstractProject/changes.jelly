@@ -39,7 +39,7 @@ THE SOFTWARE.
         <j:if test="${from!=null}">${%from.label(from)}</j:if>
         <j:if test="${to!=null}">&#160;${%to.label(to)}</j:if>
       </h1>
-      <j:set var="builds" value="${h.filter(it.buildsAsMap,from,to).values()}" />
+      <j:set var="builds" value="${h.filter(it.buildsAsMap,from+1,to).values()}" />
       <st:include it="${it.scm}" page="project-changes.jelly" />
     </l:main-panel>
   </l:layout>
