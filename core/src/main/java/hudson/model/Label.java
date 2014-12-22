@@ -54,8 +54,11 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import java.io.StringReader;
+import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -201,6 +204,34 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
         }
         return this.nodes = Collections.unmodifiableSet(r);
     }
+
+    public List<Computer> getComputers() {
+        List<Computer> result = new ArrayList<Computer>();
+        for (Node n: getNodes()) {
+            result.add(n.toComputer());
+        }
+        Collections.sort(result,new Comparator<Computer>() {
+            final Collator collator = Collator.getInstance();
+            public int compare(Computer lhs, Computer rhs) {
+                if(lhs.getNode()==Jenkins.getInstance())  return -1;
+                if(rhs.getNode()==Jenkins.getInstance())  return 1;
+                return collator.compare(lhs.getDisplayName(), rhs.getDisplayName());
+            }
+        });
+        return result;
+    }
+
+    public List<Queue.Item> getQueueItems() {
+        List<Queue.Item> result = new ArrayList<Queue.Item>();
+        for (Queue.Item qi: Jenkins.getInstance().getQueue().getItems()) {
+            if (qi.getAssignedLabel() == null || qi.getAssignedLabel() == this) {
+                result.add(qi);
+            }
+        }
+        return result;
+    }
+
+
 
     /**
      * Gets all {@link Cloud}s that can launch for this label.

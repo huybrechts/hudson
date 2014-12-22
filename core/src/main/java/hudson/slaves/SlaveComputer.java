@@ -210,6 +210,7 @@ public class SlaveComputer extends Computer {
     }
 
     protected Future<?> _connect(boolean forceReconnect) {
+		if (Boolean.getBoolean(SlaveComputer.class.getName() + ".NOLAUNCH")) return Futures.precomputed(null);
         if(channel!=null)   return Futures.precomputed(null);
         if(!forceReconnect && isConnecting())
             return lastConnectActivity;

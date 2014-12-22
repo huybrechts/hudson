@@ -29,6 +29,9 @@ package hudson.model;
 
 import com.jcraft.jzlib.GZIPInputStream;
 import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.annotations.XStreamConverter;
+import hudson.console.ConsoleLogFilter;
+import hudson.Functions;
 import hudson.AbortException;
 import hudson.BulkChange;
 import hudson.EnvVars;
@@ -47,6 +50,9 @@ import hudson.model.Descriptor.FormException;
 import hudson.model.Run.RunExecution;
 import hudson.model.listeners.RunListener;
 import hudson.model.listeners.SaveableListener;
+import hudson.security.PermissionScope;
+import hudson.util.HeapSpaceStringConverter;
+import jenkins.model.Jenkins.MasterComputer;
 import hudson.search.SearchIndexBuilder;
 import hudson.security.ACL;
 import hudson.security.AccessControlled;
@@ -195,6 +201,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     /**
      * Human-readable description. Can be null.
      */
+    @XStreamConverter(HeapSpaceStringConverter.class)
     protected volatile String description;
 
     /**
@@ -2328,6 +2335,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     static {
         XSTREAM.alias("build",FreeStyleBuild.class);
         XSTREAM.registerConverter(Result.conv);
+        XSTREAM.processAnnotations(Run.class);
     }
 
     private static final Logger LOGGER = Logger.getLogger(Run.class.getName());

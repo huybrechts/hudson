@@ -155,9 +155,9 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
 
     @Override
     public boolean add(D d) {
-        boolean r = super.add(d);
-        hudson.getExtensionList(Descriptor.class).add(d);
-        return r;
+//        boolean r = super.add(d);
+        return hudson.getExtensionList(Descriptor.class).add(d);
+//        return r;
     }
 
     @Override

@@ -87,7 +87,6 @@ import javax.annotation.Nonnull;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import static java.util.logging.Level.WARNING;
-
 import jenkins.model.lazy.BuildReference;
 import jenkins.model.lazy.LazyBuildMixIn;
 import org.kohsuke.accmod.Restricted;
@@ -391,7 +390,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             try{
                 if (e.getAuthor()==user)
                     return true;
-            } catch (RuntimeException re) { 
+            } catch (RuntimeException re) {
                 LOGGER.log(Level.INFO, "Failed to determine author of changelog " + e.getCommitId() + "for " + getParent().getDisplayName() + ", " + getDisplayName(), re);
             }
         return false;
@@ -482,7 +481,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
         public Result run(@Nonnull BuildListener listener) throws Exception {
             final Node node = getCurrentNode();
-            
+
             assert builtOn==null;
             builtOn = node.getNodeName();
             hudsonVersion = Jenkins.VERSION;
@@ -513,7 +512,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             } else {
                 listener.getLogger().print(Messages.AbstractBuild_Building());
             }
-            
+
             lease = decideWorkspace(node, Computer.currentComputer().getWorkspaceList());
 
             workspace = lease.path.getRemote();
@@ -827,7 +826,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      * No need to to lock the entire AbstractBuild on change set calculcation
      */
     private transient Object changeSetLock = new Object();
-    
+
     /**
      * Gets the changes incorporated into this build.
      *
@@ -887,7 +886,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     private ChangeLogSet<? extends Entry> calcChangeSet() {
         File changelogFile = new File(getRootDir(), "changelog.xml");
-        if (!changelogFile.exists())
+        if (!changelogFile.exists() || changelogFile.length() == 0)
             return ChangeLogSet.createEmpty(this);
 
         try {
@@ -923,13 +922,13 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     /**
      * During the build, expose the environments contributed by {@link BuildWrapper}s and others.
-     * 
+     *
      * <p>
      * Since 1.444, executor thread that's doing the build can access mutable underlying list,
      * which allows the caller to add/remove environments. The recommended way of adding
      * environment is through {@link BuildWrapper}, but this might be handy for build steps
      * who wants to expose additional environment variables to the rest of the build.
-     * 
+     *
      * @return can be empty list, but never null. Immutable.
      * @since 1.437
      */
@@ -937,9 +936,9 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         Executor e = Executor.currentExecutor();
         if (e!=null && e.getCurrentExecutable()==this) {
             if (buildEnvironments==null)    buildEnvironments = new ArrayList<Environment>();
-            return new EnvironmentList(buildEnvironments); 
+            return new EnvironmentList(buildEnvironments);
         }
-        
+
         return new EnvironmentList(buildEnvironments==null ? Collections.<Environment>emptyList() : ImmutableList.copyOf(buildEnvironments));
     }
 
@@ -954,7 +953,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     @Override public void addAction(Action a) {
         super.addAction(a);
     }
-      
+
     @SuppressWarnings("deprecation")
     public List<Action> getPersistentActions(){
         return super.getActions();
@@ -986,7 +985,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 bw.makeSensitiveBuildVariables(this, s);
             }
         }
-        
+
         return s;
     }
 
@@ -1041,10 +1040,17 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      */
     public Action getTestResultAction() {
         try {
-            return getAction(Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AbstractTestResultAction").asSubclass(Action.class));
-        } catch (ClassNotFoundException x) {
-            return null;
+            Class<?> k = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AbstractTestResultAction");
+            Class<?> l = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AggregatedTestResultAction");
+            for (Action a: getActions()) {
+                if (k.isAssignableFrom(a.getClass()) && !l.isAssignableFrom(a.getClass())) {
+                    return a;
+                }
+
+            }
+        } catch (ClassNotFoundException e) {
         }
+        return null;
     }
 
     /**
@@ -1337,7 +1343,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      *
      * If we use this/executor/stop URL, it causes 404 if the build is already killed,
      * as {@link #getExecutor()} returns null.
-     * 
+     *
      * @since 1.489
      */
     @RequirePOST

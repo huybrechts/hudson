@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
@@ -56,14 +57,14 @@ import org.kohsuke.stapler.StaplerResponse;
  *
  * <p>
  * This object can be used in a mix-in style to provide a directory browsing capability
- * to a {@link ModelObject}. 
+ * to a {@link ModelObject}.
  *
  * @author Kohsuke Kawaguchi
  */
 public final class DirectoryBrowserSupport implements HttpResponse {
 
     public final ModelObject owner;
-    
+
     public final String title;
 
     private final VirtualFile base;
@@ -85,7 +86,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
      * @param base
      *      The root of the directory that's bound to URL.
      * @param title
-     *      Used in the HTML caption. 
+     *      Used in the HTML caption.
      * @param icon
      *      The icon file name, like "folder.gif"
      * @param serveDirIndex
@@ -275,7 +276,13 @@ public final class DirectoryBrowserSupport implements HttpResponse {
             baseFile = baseFile.child(indexFileName);
         }
 
+		boolean compressed = false;
+		String originalName = baseFile.getName();
         //serve a single file
+		if (!baseFile.exists()) {
+			baseFile = baseFile.getParent().child(baseFile.getName() + ".gz");
+			compressed = true;
+		}
         if(!baseFile.exists()) {
             rsp.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -289,20 +296,23 @@ public final class DirectoryBrowserSupport implements HttpResponse {
         }
 
         long lastModified = baseFile.lastModified();
-        long length = baseFile.length();
+        long length = compressed ? -1 : baseFile.length();
 
         if(LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("Serving "+baseFile+" with lastModified=" + lastModified + ", length=" + length);
 
         InputStream in = baseFile.open();
+
+        if (compressed) in = new GZIPInputStream(in);
+
         if (view) {
             // for binary files, provide the file name for download
-            rsp.setHeader("Content-Disposition", "inline; filename=" + baseFile.getName());
+            rsp.setHeader("Content-Disposition", "inline; filename=" + originalName);
 
             // pseudo file name to let the Stapler set text/plain
             rsp.serveFile(req, in, lastModified, -1, length, "plain.txt");
         } else {
-            rsp.serveFile(req, in, lastModified, -1, length, baseFile.getName() );
+            rsp.serveFile(req, in, lastModified, -1, length, originalName );
         }
     }
 
@@ -383,7 +393,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
          * File size, or null if this is not a file.
          */
         private final long size;
-        
+
         /**
          * If the current user can read the file.
          */
@@ -400,7 +410,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
         public boolean isFolder() {
             return isFolder;
         }
-        
+
         public boolean isReadable() {
             return isReadable;
         }
@@ -482,7 +492,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
 
             VirtualFile[] files = cur.list();
                 Arrays.sort(files,new FileComparator(locale));
-    
+
                 for( VirtualFile f : files ) {
                     Path p = new Path(Util.rawEncode(f.getName()), f.getName(), f.isDirectory(), f.length(), f.canRead());
                     if(!f.isDirectory()) {
