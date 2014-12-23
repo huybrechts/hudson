@@ -11,7 +11,7 @@
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>plugin</artifactId>
   <name>Jenkins plugin POM</name>
-  <version>1.580.2</version>
+  <version>1.580.100-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <!--
@@ -40,19 +40,19 @@
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
-      <version>1.580.2</version>
+      <version>1.580.100-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-core</artifactId>
-      <version>1.580.2</version>
+      <version>1.580.100-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-      <version>1.580.2</version>
+      <version>1.580.100-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <!--
@@ -182,17 +182,17 @@
               <inlineScript><![CDATA[
                 filter {
                     def plugins = [] as Set
-                    
+
                     // collect all Jenkins plugins
                     models.entrySet().each { e ->
                         if (e.value.packaging=="hpi")
                             plugins.add(e.key.id)
                     }
-                    
+
                     // filter out dependencies that don't belong to this plugin
                     models.entrySet().removeAll(models.entrySet().findAll { e ->
                         def a = e.key;
-                        
+
                         if (a.dependencyTrail.size()>0 && plugins.contains(a.dependencyTrail[1]))
                             return true; // ignore transitive dependencies through other plugins
 
@@ -201,10 +201,10 @@
                         // dependencies into the artifact list.
                         if (a.dependencyTrail.find { trail -> trail.contains(":hudson-core:") || trail.contains(":jenkins-core:") })
                             return true;
-                            
+
                         return false;
                     })
-                }              
+                }
               ]]></inlineScript>
             </configuration>
           </execution>
@@ -231,7 +231,7 @@
         <!--
             This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.
             the plugins mention here are the ones we do not have direct control over, but are used for a jenkins plugin - all other
-            will be changed to in there source to support eclipse soon (hpi, license, localizer, access-modifier). 
+            will be changed to in there source to support eclipse soon (hpi, license, localizer, access-modifier).
             see also: http://wiki.eclipse.org/M2E_compatible_maven_plugins
         -->
         <plugin>
@@ -271,7 +271,7 @@
                     </pluginExecutions>
                 </lifecycleMappingMetadata>
             </configuration>
-        </plugin>        
+        </plugin>
         <plugin>
           <!-- make sure our code doesn't have 1.6 dependencies except where we know it -->
           <groupId>org.codehaus.mojo</groupId>
