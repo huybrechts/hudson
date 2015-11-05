@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,6 +28,7 @@ import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.acls.sid.PrincipalSid;
 import org.acegisecurity.acls.sid.GrantedAuthoritySid;
 import org.acegisecurity.acls.sid.Sid;
+import org.acegisecurity.userdetails.UserDetails;
 
 import javax.annotation.Nonnull;
 import java.util.logging.Logger;
@@ -66,8 +67,20 @@ public abstract class SidACL extends ACL {
      *      Otherwise null, indicating that this ACL doesn't have any entry for it.
      */
     protected Boolean _hasPermission(@Nonnull Authentication a, Permission permission) {
+            Sid s;
+
+        if (a.getPrincipal() instanceof UserDetails) {
+            // new PrincipalSid(Authentication) is inefficient: it does a toString()
+            // on Authentication, and then overrides that with username if principal instanceof UserDetails
+            // since this happens quite often, it produces a lot of garbage that stresses the GC.
+            // I'm fixing this here to avoid patching acegi
+            s = new PrincipalSid(((UserDetails) a.getPrincipal()).getUsername());
+        } else {
+            s = new PrincipalSid(a);
+        }
+
         // ACL entries for this principal takes precedence
-        Boolean b = hasPermission(new PrincipalSid(a),permission);
+        Boolean b = hasPermission(s,permission);
         if(LOGGER.isLoggable(FINER))
             LOGGER.finer("hasPermission(PrincipalSID:"+a.getPrincipal()+","+permission+")=>"+b);
         if(b!=null)
@@ -112,7 +125,7 @@ public abstract class SidACL extends ACL {
      *      true if the access should be granted, false if it should be denied.
      *      The null value indicates that the ACL does no rule for this Sid/Permission
      *      combination. The caller can decide what to do &mash; such as consulting the higher level ACL,
-     *      or denying the access (if the model is no-access-by-default.)  
+     *      or denying the access (if the model is no-access-by-default.)
      */
     protected abstract Boolean hasPermission(Sid p, Permission permission);
 

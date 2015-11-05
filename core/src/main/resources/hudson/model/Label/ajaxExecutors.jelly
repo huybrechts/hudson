@@ -1,7 +1,7 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Seiji Sogabe
+Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +23,11 @@ THE SOFTWARE.
 -->
 
 <!--
-  Side panel for a label.
+  Used to asynchronously update executor queue
 -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:header title="Label ${it.displayName}" />
-  <l:side-panel>
-    <l:tasks>
-      <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
-      <l:task contextMenu="false" href="${rootURL}/" icon="icon-up icon-md" title="${%Back to Dashboard}"/>
-      <l:task contextMenu="false" href="${url}" icon="icon-attribute icon-md" title="${%Overview}"/>
-      <j:if test="${it.atom}">
-        <l:task href="${url}/configure" icon="icon-setting icon-md" title="${%Configure}" permission="${app.ADMINISTER}" />
-      </j:if>
-      <l:task href="${url}/load-statistics" icon="icon-monitor icon-md" title="${%Load Statistics}"/>
-      <st:include page="actions.jelly" />
-    </l:tasks>
-    <t:queue items="${it.queueItems}" />
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:t="/lib/hudson">
+  <l:ajax>
     <t:executors computers="${it.computers}" />
-  </l:side-panel>
+  </l:ajax>
 </j:jelly>

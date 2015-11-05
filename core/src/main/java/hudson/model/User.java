@@ -1,19 +1,19 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2012, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt,
  * Tom Huybrechts, Vincent Latombe
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,6 +34,7 @@ import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException;
+import hudson.tasks.UserNameResolver;
 import hudson.util.FormApply;
 import hudson.util.FormValidation;
 import hudson.util.RunList;
@@ -122,6 +123,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
      */
     private static final String[] ILLEGAL_PERSISTED_USERNAMES = new String[]{ACL.ANONYMOUS_USERNAME,
             ACL.SYSTEM_USERNAME, UKNOWN_USERNAME};
+
     private transient final String id;
 
     private volatile String fullName;
@@ -182,7 +184,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
         // remove nulls that have failed to load
         for (Iterator<UserProperty> itr = properties.iterator(); itr.hasNext();) {
             if(itr.next()==null)
-                itr.remove();            
+                itr.remove();
         }
 
         // allocate default instances if needed.
@@ -280,7 +282,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     public List<UserProperty> getAllProperties() {
         return Collections.unmodifiableList(properties);
     }
-    
+
     /**
      * Gets the specific property, or null.
      */
@@ -332,7 +334,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
 
         description = req.getParameter("description");
         save();
-        
+
         rsp.sendRedirect(".");  // go to the top page
     }
 
@@ -471,6 +473,14 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
                 }
             }
         }
+
+        if (u != null && u.fullName != null && u.fullName.equals(u.id)) {
+            String fn = UserNameResolver.resolve(u);
+            if (fn != null) {
+                u.setFullName(fn);
+            }
+        }
+
         return u;
     }
 
@@ -903,7 +913,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     public Descriptor getDescriptorByName(String className) {
         return Jenkins.getInstance().getDescriptorByName(className);
     }
-    
+
     public Object getDynamic(String token) {
         for(Action action: getTransientActions()){
             if(action.getUrlName().equals(token))
@@ -915,10 +925,10 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
         }
         return null;
     }
-    
+
     /**
      * Return all properties that are also actions.
-     * 
+     *
      * @return the list can be empty but never null. read only.
      */
     public List<Action> getPropertyActions() {
@@ -930,10 +940,10 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
         }
         return Collections.unmodifiableList(actions);
     }
-    
+
     /**
      * Return all transient actions associated with this user.
-     * 
+     *
      * @return the list can be empty but never null. read only.
      */
     public List<Action> getTransientActions() {
@@ -980,7 +990,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Resolve user ID from full name
      */
-    @Extension
+//    @Extension
     public static class FullNameIdResolver extends CanonicalIdResolver {
 
         @Override

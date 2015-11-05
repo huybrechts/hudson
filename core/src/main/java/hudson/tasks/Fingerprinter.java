@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,6 +27,7 @@ import com.google.common.collect.ImmutableMap;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
+import hudson.XmlFile;
 import jenkins.MasterToSlaveFileCallable;
 import hudson.Launcher;
 import hudson.Util;
@@ -60,8 +61,10 @@ import org.kohsuke.stapler.StaplerRequest;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +74,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.RunAction2;
@@ -83,7 +87,7 @@ import jenkins.tasks.SimpleBuildStep;
  */
 public class Fingerprinter extends Recorder implements Serializable, DependencyDeclarer, SimpleBuildStep {
     public static boolean enableFingerprintsInDependencyGraph = Boolean.getBoolean(Fingerprinter.class.getName() + ".enableFingerprintsInDependencyGraph");
-    
+
     /**
      * Comma-separated list of files/directories to be fingerprinted.
      */
@@ -117,7 +121,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
             listener.getLogger().println(Messages.Fingerprinter_Recording());
 
             Map<String,String> record = new HashMap<String,String>();
-            
+
             EnvVars environment = build.getEnvironment(listener);
             if(targets.length()!=0) {
                 String expandedTargets = environment.expand(targets);
@@ -282,7 +286,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
     public static final class FingerprintAction implements RunAction2 {
 
         private transient Run build;
-        
+
         private static final Random rand = new Random();
 
         /**
@@ -291,10 +295,32 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
         private /*almost final*/ PackedMap<String,String> record;
 
         private transient WeakReference<Map<String,Fingerprint>> ref;
+		private transient SoftReference<PackedMap<String,String>> recordRef;
 
         public FingerprintAction(Run build, Map<String, String> record) {
             this.build = build;
-            this.record = compact(record);
+
+            if (record.size() > 50) {
+                write(record);
+				recordRef = new SoftReference<>(PackedMap.of(record));
+            } else {
+                this.record = PackedMap.of(record);
+            }
+
+            onLoad(build);   // make compact
+        }
+
+        private void write(Map<String,String> record) {
+            File fingerprintsFile = getFile();
+            try {
+                new XmlFile(fingerprintsFile).write(record);
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "could not save fingerprints to " + fingerprintsFile, e);
+            }
+        }
+
+        private File getFile() {
+            return new File(build.getRootDir(), "fingerprints.xml");
         }
 
         @Deprecated
@@ -334,7 +360,19 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
          * Obtains the raw data.
          */
         public Map<String,String> getRecords() {
-            return record;
+            if (record != null) {
+                return record;
+            }
+			if (recordRef != null && recordRef.get() != null) return recordRef.get();
+
+            try {
+				final PackedMap<String, String> result = PackedMap.of((Map<String, String>) new XmlFile(getFile()).read());
+				recordRef = new SoftReference<PackedMap<String, String>>(result);
+				return result;
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "could not load fingerprints from " + getFile(), e);
+                return Collections.emptyMap();
+            }
         }
 
         @Override public void onLoad(Run<?,?> r) {
@@ -368,7 +406,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
             Jenkins h = Jenkins.getInstance();
 
             Map<String,Fingerprint> m = new TreeMap<String,Fingerprint>();
-            for (Entry<String, String> r : record.entrySet()) {
+            for (Entry<String, String> r : getRecords().entrySet()) {
                 try {
                     Fingerprint fp = h._getFingerprint(r.getValue());
                     if(fp!=null)
@@ -389,7 +427,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
         public Map<AbstractProject,Integer> getDependencies() {
             return getDependencies(false);
         }
-        
+
         /**
          * Gets the dependency to other builds in a map.
          *
@@ -428,7 +466,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
                 }
 
             }
-            
+
             return r;
         }
     }
