@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Tom Huybrechts
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -74,7 +74,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 
 /**
  * Group of {@link Node}s.
- * 
+ *
  * @author Kohsuke Kawaguchi
  * @see Jenkins#getLabels()
  * @see Jenkins#getLabel(String)
@@ -249,7 +249,7 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
         }
         return clouds;
     }
-    
+
     /**
      * Can jobs be assigned to this label?
      * <p>
@@ -448,7 +448,7 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
     public boolean isEmpty() {
         return getNodes().isEmpty() && getClouds().isEmpty();
     }
-    
+
     /*package*/ void reset() {
         nodes = null;
         clouds = null;
@@ -610,6 +610,16 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
     public static Label parseExpression(String labelExpression) throws ANTLRException {
         LabelExpressionLexer lexer = new LabelExpressionLexer(new StringReader(labelExpression));
         return new LabelExpressionParser(lexer).expr();
+    }
+
+    public List<Queue.Item> getApproximateQueueItemsQuickly() {
+        List<Queue.Item> result = new ArrayList<Queue.Item>();
+        for (Queue.Item item: Jenkins.getInstance().getQueue().getApproximateItemsQuickly()) {
+            if (item.getAssignedLabel() == this) {
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     /**

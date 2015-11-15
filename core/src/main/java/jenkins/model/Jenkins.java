@@ -469,7 +469,23 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     /**
      * {@link Computer}s in this Hudson system. Read-only.
      */
-    protected transient final Map<Node,Computer> computers = new CopyOnWriteMap.Hash<Node,Computer>();
+    protected transient final CopyOnWriteMap<Node,Computer> computers = new CopyOnWriteMap.Tree<Node,Computer>(new Comparator<Node>() {
+
+        final Collator collator;
+
+        {
+            collator = Collator.getInstance();
+            collator.setStrength(Collator.PRIMARY);
+        }
+
+        @Override
+        public int compare(Node lhs, Node rhs) {
+            if(lhs==Jenkins.this)  return -1;
+            if(rhs==Jenkins.this)  return 1;
+            return collator.compare(lhs.getNodeName(), rhs.getNodeName());
+        }
+
+    });
 
     /**
      * Active {@link Cloud}s.
@@ -1522,17 +1538,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * Gets the read-only list of all {@link Computer}s.
      */
     public Computer[] getComputers() {
-        Computer[] r = computers.values().toArray(new Computer[computers.size()]);
-        final Collator collator = Collator.getInstance();
-        collator.setStrength(Collator.PRIMARY);
-        Arrays.sort(r,new Comparator<Computer>() {
-            @Override public int compare(Computer lhs, Computer rhs) {
-                if(lhs.getNode()==Jenkins.this)  return -1;
-                if(rhs.getNode()==Jenkins.this)  return 1;
-                return collator.compare(lhs.getName(), rhs.getName());
-            }
-        });
-        return r;
+        return computers.values().toArray(new Computer[computers.size()]);
     }
 
     @CLIResolver
@@ -2609,11 +2615,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 throw new IOException(projectsDir+" is not a directory");
             throw new IOException("Unable to create "+projectsDir+"\nPermission issue? Please create this directory manually.");
         }
-        File[] subdirs = projectsDir.listFiles(new FileFilter() {
-            public boolean accept(File child) {
-                return child.isDirectory() && Items.getConfigFile(child).exists();
-            }
-        });
+        File[] subdirs = projectsDir.listFiles();
 
         final Set<String> loadedNames = Collections.synchronizedSet(new HashSet<String>());
 
@@ -2659,6 +2661,10 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         for (final File subdir : subdirs) {
             g.requires(loadHudson).attains(JOB_LOADED).notFatal().add("Loading job "+subdir.getName(),new Executable() {
                 public void run(Reactor session) throws Exception {
+                    if(!Items.getConfigFile(subdir).exists()) {
+                        //Does not have job config file, so it is not a jenkins job hence skip it
+                        return;
+                    }
                     TopLevelItem item = (TopLevelItem) Items.load(Jenkins.this, subdir);
                     items.put(item.getName(), item);
                     loadedNames.add(item.getName());
@@ -3534,6 +3540,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         _doScript(req, rsp, req.getView(this, "_scriptText.jelly"), FilePath.localChannel, getACL());
     }
 
+    private static final Logger GROOVY_LOGGER = Logger.getLogger(Jenkins.class.getName() + ".script");
     /**
      * @since 1.509.1
      */
@@ -3546,6 +3553,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             if (!"POST".equals(req.getMethod())) {
                 throw HttpResponses.error(HttpURLConnection.HTTP_BAD_METHOD, "requires POST");
             }
+            GROOVY_LOGGER.info("Running script for " + req.getRemoteHost() + "\n" + text);
             try {
                 req.setAttribute("output",
                         RemotingDiagnostics.executeGroovy(text, channel));

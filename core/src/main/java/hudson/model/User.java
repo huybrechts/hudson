@@ -381,7 +381,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
             byNameLock.readLock().unlock();
         }
         final File configFile = getConfigFileFor(id);
-        if (!configFile.isFile() && !configFile.getParentFile().isDirectory()) {
+        if (Boolean.getBoolean("migrateLegacyUser") && !configFile.isFile() && !configFile.getParentFile().isDirectory()) {
             // check for legacy users and migrate if safe to do so.
             File[] legacy = getLegacyConfigFilesFor(id);
             if (legacy != null && legacy.length > 0) {

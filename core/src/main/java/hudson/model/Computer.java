@@ -101,6 +101,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import static java.util.logging.Logger.*;
 import static javax.servlet.http.HttpServletResponse.*;
 
 /**
@@ -133,7 +134,7 @@ import static javax.servlet.http.HttpServletResponse.*;
 public /*transient*/ abstract class Computer extends Actionable implements AccessControlled, ExecutorListener {
 
     private final CopyOnWriteArrayList<Executor> executors = new CopyOnWriteArrayList<Executor>();
-    // TODO: 
+    // TODO:
     private final CopyOnWriteArrayList<OneOffExecutor> oneOffExecutors = new CopyOnWriteArrayList<OneOffExecutor>();
 
     private int numExecutors;
@@ -142,7 +143,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      * Contains info about reason behind computer being offline.
      */
     protected volatile OfflineCause offlineCause;
-    
+
     private long connectTime = 0;
 
     /**
@@ -178,7 +179,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     public List<ComputerPanelBox> getComputerPanelBoxs(){
         return ComputerPanelBox.all(this);
     }
-    
+
     /**
      * Returns the transient {@link Action}s associated with the computer.
      */
@@ -239,7 +240,15 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     }
 
     public void checkPermission(Permission permission) {
-        getACL().checkPermission(permission);
+        boolean success = false;
+        try {
+            getACL().checkPermission(permission);
+            success = true;
+        } finally {
+            if (!success) {
+                LOGGER.warning("Failed to acquire permission for " + getDisplayName());
+            }
+        }
     }
 
     public boolean hasPermission(Permission permission) {
@@ -338,7 +347,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     	connectTime = System.currentTimeMillis();
     	return _connect(forceReconnect);
     }
-    
+
     /**
      * Allows implementing-classes to provide an implementation for the connect method.
      *
@@ -371,13 +380,13 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
 
     /**
      * Gets the time (since epoch) when this computer connected.
-     *  
+     *
      * @return The time in ms since epoch when this computer last connected.
      */
     public final long getConnectTime() {
     	return connectTime;
     }
-    
+
     /**
      * Disconnect this computer.
      *
@@ -582,7 +591,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      *
      * @param cause
      *      If the first argument is true, specify the reason why the node is being put
-     *      offline. 
+     *      offline.
      */
     public void setTemporarilyOffline(boolean temporarilyOffline, OfflineCause cause) {
         offlineCause = temporarilyOffline ? cause : null;
@@ -993,7 +1002,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      * @since 1.300
      * @return
      *      null if the host name cannot be computed (for example because this computer is offline,
-     *      because the slave is behind the firewall, etc.) 
+     *      because the slave is behind the firewall, etc.)
      */
     public String getHostName() throws IOException, InterruptedException {
         if(hostNameCached)
@@ -1188,7 +1197,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
 
         String name = Util.fixEmptyAndTrim(req.getSubmittedForm().getString("name"));
         Jenkins.checkGoodName(name);
-        
+
         Node node = getNode();
         if (node == null) {
             throw new ServletException("No such node " + nodeName);
@@ -1369,7 +1378,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
                 File newLocation = new File(dir, "logs/slaves/" + m.group(1) + "/slave.log" + Util.fixNull(m.group(2)));
                 newLocation.getParentFile().mkdirs();
                 boolean relocationSuccessfull=f.renameTo(newLocation);
-                if (relocationSuccessfull) { // The operation will fail if mkdir fails 
+                if (relocationSuccessfull) { // The operation will fail if mkdir fails
                     LOGGER.log(Level.INFO, "Relocated log file {0} to {1}",new Object[] {f.getPath(),newLocation.getPath()});
                 } else {
                     LOGGER.log(Level.WARNING, "Cannot relocate log file {0} to {1}",new Object[] {f.getPath(),newLocation.getPath()});
@@ -1392,5 +1401,5 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     public static final Permission CONNECT = new Permission(PERMISSIONS,"Connect", Messages._Computer_ConnectPermission_Description(), DISCONNECT, PermissionScope.COMPUTER);
     public static final Permission BUILD = new Permission(PERMISSIONS, "Build", Messages._Computer_BuildPermission_Description(),  Permission.WRITE, PermissionScope.COMPUTER);
 
-    private static final Logger LOGGER = Logger.getLogger(Computer.class.getName());
+    private static final Logger LOGGER = getLogger(Computer.class.getName());
 }
