@@ -34,6 +34,7 @@ import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException;
+import hudson.tasks.UserNameResolver;
 import hudson.util.FormApply;
 import hudson.util.FormValidation;
 import hudson.util.RunList;
@@ -420,7 +421,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
             byNameLock.readLock().unlock();
         }
         final File configFile = getConfigFileFor(id);
-        if (!configFile.isFile() && !configFile.getParentFile().isDirectory()) {
+        if (Boolean.getBoolean("migrateLegacyUser") && !configFile.isFile() && !configFile.getParentFile().isDirectory()) {
             // check for legacy users and migrate if safe to do so.
             File[] legacy = getLegacyConfigFilesFor(id);
             if (legacy != null && legacy.length > 0) {
@@ -471,6 +472,14 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
                 }
             }
         }
+
+        if (u != null && u.fullName != null && u.fullName.equals(u.id)) {
+            String fn = UserNameResolver.resolve(u);
+            if (fn != null) {
+                u.setFullName(fn);
+            }
+        }
+
         return u;
     }
 
@@ -980,7 +989,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Resolve user ID from full name
      */
-    @Extension
+//    @Extension
     public static class FullNameIdResolver extends CanonicalIdResolver {
 
         @Override

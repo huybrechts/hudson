@@ -923,7 +923,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     private ChangeLogSet<? extends Entry> calcChangeSet() {
         File changelogFile = new File(getRootDir(), "changelog.xml");
-        if (!changelogFile.exists())
+        if (!changelogFile.exists() || changelogFile.length() == 0)
             return ChangeLogSet.createEmpty(this);
 
         try {
@@ -1078,10 +1078,17 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     @Deprecated
     public Action getTestResultAction() {
         try {
-            return getAction(Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AbstractTestResultAction").asSubclass(Action.class));
-        } catch (ClassNotFoundException x) {
-            return null;
+            Class<?> k = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AbstractTestResultAction");
+            Class<?> l = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.tasks.test.AggregatedTestResultAction");
+            for (Action a: getActions()) {
+                if (k.isAssignableFrom(a.getClass()) && !l.isAssignableFrom(a.getClass())) {
+                    return a;
+                }
+
+            }
+        } catch (ClassNotFoundException e) {
         }
+        return null;
     }
 
     /**
