@@ -3553,14 +3553,14 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * Run arbitrary Groovy script.
      */
     public void doScript(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        _doScript(req, rsp, req.getView(this, "_script.jelly"), FilePath.localChannel, getACL());
+        _doScript(req, rsp, req.getView(new MasterComputer(), "_script.jelly"), FilePath.localChannel, getACL());
     }
 
     /**
      * Run arbitrary Groovy script and return result as plain text.
      */
     public void doScriptText(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        _doScript(req, rsp, req.getView(this, "_scriptText.jelly"), FilePath.localChannel, getACL());
+        _doScript(req, rsp, req.getView(new MasterComputer(), "_scriptText.jelly"), FilePath.localChannel, getACL());
     }
 
     private static final Logger GROOVY_LOGGER = Logger.getLogger(Jenkins.class.getName() + ".script");
@@ -3581,7 +3581,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 throw HttpResponses.error(HttpURLConnection.HTTP_NOT_FOUND, "Node is offline");
             }
 
-            GROOVY_LOGGER.info("Running script for " + req.getRemoteHost() + "\n" + text);
+            GROOVY_LOGGER.info("Running script for " + req.getRemoteHost() + "-" + getAuthentication() + "\n" + text);
             
             try {
                 req.setAttribute("output",
