@@ -105,7 +105,7 @@ public class ChannelPinger extends ComputerListener {
 
     private static void setUpPingForChannel(final Channel channel, int interval) {
         final AtomicBoolean isInClosed = new AtomicBoolean(false);
-        final PingThread t = new PingThread(channel, interval * 60 * 1000) {
+        final PingThread t = new PingThread(channel, interval * 60 * 1000, interval * 60 * 1000) {
             protected void onDead(Throwable cause) {
                 try {
                     for (PingFailureAnalyzer pfa : PingFailureAnalyzer.all()) {
