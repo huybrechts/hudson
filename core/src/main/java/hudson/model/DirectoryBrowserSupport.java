@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
@@ -280,7 +281,13 @@ public final class DirectoryBrowserSupport implements HttpResponse {
             baseFile = baseFile.child(indexFileName);
         }
 
+		boolean compressed = false;
+		String originalName = baseFile.getName();
         //serve a single file
+		if (!baseFile.exists()) {
+			baseFile = baseFile.getParent().child(baseFile.getName() + ".gz");
+			compressed = true;
+		}
         if(!baseFile.exists()) {
             rsp.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -299,15 +306,18 @@ public final class DirectoryBrowserSupport implements HttpResponse {
         }
 
         long lastModified = baseFile.lastModified();
-        long length = baseFile.length();
+        long length = compressed ? -1 : baseFile.length();
 
         if(LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("Serving "+baseFile+" with lastModified=" + lastModified + ", length=" + length);
 
         InputStream in = baseFile.open();
+
+        if (compressed) in = new GZIPInputStream(in);
+
         if (view) {
             // for binary files, provide the file name for download
-            rsp.setHeader("Content-Disposition", "inline; filename=" + baseFile.getName());
+            rsp.setHeader("Content-Disposition", "inline; filename=" + originalName);
 
             // pseudo file name to let the Stapler set text/plain
             rsp.serveFile(req, in, lastModified, -1, length, "plain.txt");
@@ -319,7 +329,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
                     rsp.setHeader(header, csp);
                 }
             }
-            rsp.serveFile(req, in, lastModified, -1, length, baseFile.getName() );
+            rsp.serveFile(req, in, lastModified, -1, length, originalName );
         }
     }
 

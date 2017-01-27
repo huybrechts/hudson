@@ -68,8 +68,10 @@ public class ResponseTimeMonitor extends NodeMonitor {
                     // the failure in this monitor indicates that we are just unable to make any requests
                     // to this agent. So we should severe the connection, as opposed to marking it temporarily
                     // off line, which still keeps the underlying channel open.
-                    c.disconnect(d);
-                    LOGGER.warning(Messages.ResponseTimeMonitor_MarkedOffline(c.getName()));
+                    if (c.isOnline()) {
+                        c.disconnect(d);
+                        LOGGER.warning(Messages.ResponseTimeMonitor_MarkedOffline(c.getName()));
+                    }
                 }
             }
             return base;

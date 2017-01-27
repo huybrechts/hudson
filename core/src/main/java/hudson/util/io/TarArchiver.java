@@ -53,6 +53,7 @@ final class TarArchiver extends Archiver {
         tar = new TarArchiveOutputStream(out);
         tar.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
         tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
+        tar.setAddPaxHeadersForNonAsciiNames(true);
     }
 
     @Override
