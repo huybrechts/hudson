@@ -1547,7 +1547,11 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
      */
     private static void checkForEmptyParameters(JSONObject jsonProperties) throws FormException{
         JSONObject parameterDefinitionProperty = jsonProperties.getJSONObject("hudson-model-ParametersDefinitionProperty");
-        if ((parameterDefinitionProperty.getBoolean("specified") == true)&& !parameterDefinitionProperty.has("parameterDefinitions")) {
+        if (
+                !parameterDefinitionProperty.isNullObject() &&
+                parameterDefinitionProperty.getBoolean("specified") &&
+                !parameterDefinitionProperty.has("parameterDefinitions")
+        ) {
 		    throw new FormException(Messages.Hudson_NoParamsSpecified(),"parameterDefinitions");
         }
     }
