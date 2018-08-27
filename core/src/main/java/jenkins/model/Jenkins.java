@@ -510,6 +510,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
 
         @Override
         public int compare(Node lhs, Node rhs) {
+            if (lhs==rhs) return 0;
             if(lhs==Jenkins.this)  return -1;
             if(rhs==Jenkins.this)  return 1;
             return collator.compare(lhs.getNodeName(), rhs.getNodeName());
