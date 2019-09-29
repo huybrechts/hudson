@@ -43,6 +43,7 @@ import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException;
+import hudson.tasks.UserNameResolver;
 import hudson.util.FormApply;
 import hudson.util.FormValidation;
 import hudson.util.RunList;
@@ -329,7 +330,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     public @Nonnull Authentication impersonate() throws UsernameNotFoundException {
         return this.impersonate(this.getUserDetailsForImpersonation());
     }
-    
+
     /**
      * This method checks with {@link SecurityRealm} if the user is a valid user that can login to the security realm.
      * If {@link SecurityRealm} is a kind that does not support querying information about other users, this will
@@ -345,7 +346,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
         ImpersonatingUserDetailsService userDetailsService = new ImpersonatingUserDetailsService(
                 Jenkins.getInstance().getSecurityRealm().getSecurityComponents().userDetails
         );
-        
+
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(id);
             LOGGER.log(Level.FINE, "Impersonation of the user {0} was a success", new Object[]{ id });
@@ -365,7 +366,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
             // seems like it's in the same boat as UserMayOrMayNotExistException
             LOGGER.log(Level.FINE, "The user {0} retrieval just threw a DataAccess exception with msg = {1}, so we provide minimum access", new Object[]{ id, e.getMessage() });
         }
-        
+
         return new LegitimateButUnknownUserDetails(id);
     }
 
@@ -552,11 +553,19 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
                 }
             }
         }
+
+        if (u != null && u.fullName != null && u.fullName.equals(u.id)) {
+            String fn = UserNameResolver.resolve(u);
+            if (fn != null) {
+                u.setFullName(fn);
+            }
+        }
+
         return u;
     }
-    
+
     private static boolean isMigrationRequiredForLegacyConfigFile(@Nonnull File legacyConfigFile, @Nonnull File newConfigFile){
-        boolean mustMigrateLegacyConfig = legacyConfigFile.exists() && !legacyConfigFile.equals(newConfigFile);
+        boolean mustMigrateLegacyConfig = Boolean.getBoolean("migrateLegacyUser") && legacyConfigFile.exists() && !legacyConfigFile.equals(newConfigFile);
         if(mustMigrateLegacyConfig){
             try{
                 // TODO Could be replace by Util.isDescendant(getRootDir(), legacyConfigFile) in 2.80+
@@ -576,7 +585,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
                 LOGGER.log(
                         Level.WARNING,
                         String.format(
-                                "Failed to determine the canonical path of %s, migration aborted, see SECURITY-897 for more information", 
+                                "Failed to determine the canonical path of %s, migration aborted, see SECURITY-897 for more information",
                                 legacyConfigFile.getAbsolutePath()
                         ),
                         e
@@ -1116,7 +1125,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     @Restricted(NoExternalUse.class)
     public static /* Script Console modifiable */ boolean SKIP_PERMISSION_CHECK = Boolean.getBoolean(User.class.getName() + ".skipPermissionCheck");
 
-    
+
     /**
      * Gets list of Illegal usernames, for which users should not be created.
      * Always includes users from {@link #ILLEGAL_PERSISTED_USERNAMES}
@@ -1256,7 +1265,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Resolve user ID from full name
      */
-    @Extension @Symbol("fullName")
+//    @Extension @Symbol("fullName")
     public static class FullNameIdResolver extends CanonicalIdResolver {
 
         @Override

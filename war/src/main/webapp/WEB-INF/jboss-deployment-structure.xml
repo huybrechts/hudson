@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jboss-deployment-structure>
     <deployment>
+        <dependencies>
+            <module name="io.undertow.core" />
+            <module name="io.undertow.servlet" />
+        </dependencies>
         <exclusions>
             <module name="com.fasterxml.jackson.core.jackson-core" />
             <module name="com.fasterxml.jackson.core.jackson-annotations" />

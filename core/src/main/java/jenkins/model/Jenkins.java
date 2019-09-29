@@ -254,6 +254,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.SecureRandom;
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -474,7 +475,24 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     /**
      * {@link Computer}s in this Jenkins system. Read-only.
      */
-    protected transient final Map<Node,Computer> computers = new CopyOnWriteMap.Hash<Node,Computer>();
+    protected transient final CopyOnWriteMap<Node,Computer> computers = new CopyOnWriteMap.Tree<Node,Computer>(new Comparator<Node>() {
+
+        final Collator collator;
+
+        {
+            collator = Collator.getInstance();
+            collator.setStrength(Collator.PRIMARY);
+        }
+
+        @Override
+        public int compare(Node lhs, Node rhs) {
+            if (lhs==rhs) return 0;
+            if(lhs==Jenkins.this)  return -1;
+            if(rhs==Jenkins.this)  return 1;
+            return collator.compare(lhs.getNodeName(), rhs.getNodeName());
+        }
+
+    });
 
     /**
      * Active {@link Cloud}s.
@@ -1885,15 +1903,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * Gets the read-only list of all {@link Computer}s.
      */
     public Computer[] getComputers() {
-        Computer[] r = computers.values().toArray(new Computer[computers.size()]);
-        Arrays.sort(r,new Comparator<Computer>() {
-            @Override public int compare(Computer lhs, Computer rhs) {
-                if(lhs.getNode()==Jenkins.this)  return -1;
-                if(rhs.getNode()==Jenkins.this)  return 1;
-                return lhs.getName().compareTo(rhs.getName());
-            }
-        });
-        return r;
+        return computers.values().toArray(new Computer[computers.size()]);
     }
 
     @CLIResolver
@@ -2211,7 +2221,10 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 .add(new CollectionSearchIndex() {// for views
                     protected View get(String key) { return getView(key); }
                     protected Collection<View> all() { return viewGroupMixIn.getViews(); }
-                });
+                }).add(new CollectionSearchIndex() {
+                protected Label get(String key) { return labels.get(key); }
+                protected Collection<Label> all() { return getLabels(); }
+            });
         return builder;
     }
 
@@ -2228,7 +2241,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * It is done in this order so that it can work correctly even in the face
      * of a reverse proxy.
      *
-     * @return {@code null} if this parameter is not configured by the user and the calling thread is not in an HTTP request; 
+     * @return {@code null} if this parameter is not configured by the user and the calling thread is not in an HTTP request;
      *                      otherwise the returned URL will always have the trailing {@code /}
      * @throws IllegalStateException {@link JenkinsLocationConfiguration} cannot be retrieved.
      *                      Jenkins instance may be not ready, or there is an extension loading glitch.
@@ -3693,7 +3706,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             boolean result = true;
             for (Descriptor<?> d : Functions.getSortedDescriptorsForGlobalConfigUnclassified())
                 result &= configureDescriptor(req,json,d);
-            
+
             save();
             updateComputerList();
             if(result)
@@ -3853,7 +3866,13 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         Map<String,Map<String,String>> r = new HashMap<String, Map<String, String>>();
         for (Entry<String, Future<Map<String, String>>> e : future.entrySet()) {
             try {
-                r.put(e.getKey(), e.getValue().get(endTime-System.currentTimeMillis(), TimeUnit.MILLISECONDS));
+                Map<String, String> threadDump;
+                if ("master".equals(e.getKey())) {
+                    threadDump = e.getValue().get();
+                } else {
+                    threadDump = e.getValue().get(endTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+                }
+                r.put(e.getKey(), threadDump);
             } catch (Exception x) {
                 r.put(e.getKey(), Collections.singletonMap("Failed to retrieve thread dump", Functions.printThrowable(x)));
             }
@@ -4349,16 +4368,17 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * Run arbitrary Groovy script.
      */
     public void doScript(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        _doScript(req, rsp, req.getView(this, "_script.jelly"), FilePath.localChannel, getACL());
+        _doScript(req, rsp, req.getView(new MasterComputer(), "_script.jelly"), FilePath.localChannel, getACL());
     }
 
     /**
      * Run arbitrary Groovy script and return result as plain text.
      */
     public void doScriptText(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        _doScript(req, rsp, req.getView(this, "_scriptText.jelly"), FilePath.localChannel, getACL());
+        _doScript(req, rsp, req.getView(new MasterComputer(), "_scriptText.jelly"), FilePath.localChannel, getACL());
     }
 
+    private static final Logger GROOVY_LOGGER = Logger.getLogger(Jenkins.class.getName() + ".script");
     /**
      * @since 1.509.1
      */
@@ -4375,6 +4395,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             if (channel == null) {
                 throw HttpResponses.error(HttpURLConnection.HTTP_NOT_FOUND, "Node is offline");
             }
+
+            GROOVY_LOGGER.info("Running script for " + req.getRemoteHost() + "-" + getAuthentication() + "\n" + text);
 
             try {
                 req.setAttribute("output",
@@ -4650,7 +4672,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         }
         return this;
     }
-    
+
     /**
      * Test a path to see if it is subject to mandatory read permission checks by container-managed security
      * @param restOfPath the URI, excluding the Jenkins root URI and query string

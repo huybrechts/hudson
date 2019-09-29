@@ -380,7 +380,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         if (node != null) {
             final Computer computer = node.toComputer();
             if (computer != null) {
-                // we need to get computer environment to inherit platform details 
+                // we need to get computer environment to inherit platform details
                 env = computer.getEnvironment();
                 env.putAll(computer.buildEnvironment(listener));
             }
