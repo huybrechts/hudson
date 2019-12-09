@@ -60,6 +60,9 @@ public class ChannelPinger extends ComputerListener {
     private static final String TIMEOUT_SECONDS_PROPERTY = ChannelPinger.class.getName() + ".pingTimeoutSeconds";
     private static final String INTERVAL_MINUTES_PROPERTY_DEPRECATED = ChannelPinger.class.getName() + ".pingInterval";
     private static final String INTERVAL_SECONDS_PROPERTY = ChannelPinger.class.getName() + ".pingIntervalSeconds";
+    public static final boolean ENABLED =
+            System.getProperty(ChannelPinger.class.getName() + ".class", ChannelPinger.class.getName())
+                    .equals(ChannelPinger.class.getName());
 
     /**
      * Timeout for the ping in seconds.
@@ -70,6 +73,7 @@ public class ChannelPinger extends ComputerListener {
      * Interval for the ping in seconds.
      */
     private int pingIntervalSeconds = PING_INTERVAL_SECONDS_DEFAULT;
+
 
     public ChannelPinger() {
         
@@ -104,6 +108,10 @@ public class ChannelPinger extends ComputerListener {
 
     @VisibleForTesting
     /*package*/ void install(Channel channel, @CheckForNull SlaveComputer c) {
+        if (!ENABLED) {
+            return;
+        }
+
         if (pingTimeoutSeconds < 1 || pingIntervalSeconds < 1) {
             LOGGER.warning("Agent ping is disabled");
             return;
